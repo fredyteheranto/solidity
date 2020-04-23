@@ -32,6 +32,9 @@ class Z3CHCInterface: public CHCSolverInterface
 public:
 	Z3CHCInterface();
 
+	void enableOptimizations();
+	void disableOptimizations();
+
 	/// Forwards variable declaration to Z3Interface.
 	void declareVariable(std::string const& _name, SortPointer const& _sort) override;
 

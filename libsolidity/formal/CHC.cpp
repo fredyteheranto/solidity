@@ -956,6 +956,19 @@ pair<smt::CheckResult, vector<string>> CHC::query(smt::Expression const& _query,
 	smt::CheckResult result;
 	vector<string> values;
 	tie(result, values) = m_interface->query(_query);
+
+#ifdef HAVE_Z3
+	// If the query couldn't be solved we change Spacer's
+	// strategy and try again.
+	auto& spacer = dynamic_cast<smt::Z3CHCInterface&>(*m_interface);
+	if (result == smt::CheckResult::UNKNOWN || result == smt::CheckResult::ERROR)
+	{
+		spacer.disableOptimizations();
+		tie(result, values) = m_interface->query(_query);
+		spacer.enableOptimizations();
+	}
+#endif
+
 	switch (result)
 	{
 	case smt::CheckResult::SATISFIABLE:

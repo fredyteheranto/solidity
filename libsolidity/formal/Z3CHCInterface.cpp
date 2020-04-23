@@ -33,6 +33,11 @@ Z3CHCInterface::Z3CHCInterface():
 	z3::set_param("rewriter.pull_cheap_ite", true);
 	z3::set_param("rlimit", Z3Interface::resourceLimit);
 
+	enableOptimizations();
+}
+
+void Z3CHCInterface::enableOptimizations()
+{
 	// Spacer options.
 	// These needs to be set in the solver.
 	// https://github.com/Z3Prover/z3/blob/master/src/muz/base/fp_params.pyg
@@ -43,6 +48,25 @@ Z3CHCInterface::Z3CHCInterface():
 	p.set("fp.spacer.mbqi", false);
 	// Ground pobs by using values from a model.
 	p.set("fp.spacer.ground_pobs", false);
+	// Limits array reasoning, good for constant arrays.
+	p.set("fp.spacer.weak_abs", false);
+	m_solver.set(p);
+}
+
+void Z3CHCInterface::disableOptimizations()
+{
+	// Spacer options.
+	// These needs to be set in the solver.
+	// https://github.com/Z3Prover/z3/blob/master/src/muz/base/fp_params.pyg
+	z3::params p(*m_context);
+	// These are useful for solving problems with arrays and loops.
+	// Use quantified lemma generalizer.
+	p.set("fp.spacer.q3.use_qgen", false);
+	p.set("fp.spacer.mbqi", true);
+	// Ground pobs by using values from a model.
+	p.set("fp.spacer.ground_pobs", true);
+	// Limits array reasoning, good for constant arrays.
+	p.set("fp.spacer.weak_abs", true);
 	m_solver.set(p);
 }
 
