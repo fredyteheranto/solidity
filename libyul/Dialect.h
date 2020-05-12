@@ -47,6 +47,7 @@ struct BuiltinFunction
 	ControlFlowSideEffects controlFlowSideEffects;
 	/// If true, this is the msize instruction.
 	bool isMSize = false;
+	bool isPC = false;
 	/// If set, same length as the arguments, if true at index i, the i'th argument has to be a literal which means it can't be moved to variables.
 	std::optional<std::vector<bool>> literalArguments;
 };

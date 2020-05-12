@@ -69,6 +69,7 @@ pair<YulString, BuiltinFunctionForEVM> createEVMFunction(
 	f.controlFlowSideEffects.terminates = evmasm::SemanticInformation::terminatesControlFlow(_instruction);
 	f.controlFlowSideEffects.reverts = evmasm::SemanticInformation::reverts(_instruction);
 	f.isMSize = _instruction == evmasm::Instruction::MSIZE;
+	f.isPC = _instruction == evmasm::Instruction::PC;
 	f.literalArguments.reset();
 	f.instruction = _instruction;
 	f.generateCode = [_instruction](
@@ -106,6 +107,7 @@ pair<YulString, BuiltinFunctionForEVM> createFunction(
 	else
 		f.literalArguments.reset();
 	f.isMSize = false;
+	f.isPC = false;
 	f.instruction = {};
 	f.generateCode = std::move(_generateCode);
 	return {name, f};
