@@ -28,6 +28,7 @@ Compiler Features:
  * Commandline Interface: Don't ignore `--yul-optimizations` in assembly mode.
  * Allow using abi encoding functions for calldata array slices without explicit casts.
  * Wasm binary output: Implement ``br`` and ``br_if``.
+ * Commandline Interface: Adds new option ``--base-path PATH`` for resolving relative paths when importing files via ``--standard-json``
 
 
 Bugfixes:
