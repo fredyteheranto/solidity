@@ -121,7 +121,7 @@ string IRGenerationContext::newYulVariable()
 	return "_" + to_string(++m_varCounter);
 }
 
-string IRGenerationContext::internalDispatch(YulArity const& _arity)
+string IRGenerationContext::generateInternalDispatchFunction(YulArity const& _arity)
 {
 	// UNIMPLEMENTED: Internal library calls via pointers are not implemented yet.
 	// We're not generating code for internal library functions here even though it's possible
@@ -139,10 +139,10 @@ string IRGenerationContext::internalDispatch(YulArity const& _arity)
 				enqueueFunctionForCodeGeneration(*function);
 			}
 
-	return internalDispatch(_arity, move(functions));
+	return generateInternalDispatchFunction(_arity, move(functions));
 }
 
-string IRGenerationContext::internalDispatch(YulArity const& _arity, set<FunctionDefinition const*> _functions)
+string IRGenerationContext::generateInternalDispatchFunction(YulArity const& _arity, set<FunctionDefinition const*> _functions)
 {
 	string funName = IRNames::internalDispatch(_arity);
 	return m_functions.createFunction(funName, [funName, _arity, functions(move(_functions))]() {
