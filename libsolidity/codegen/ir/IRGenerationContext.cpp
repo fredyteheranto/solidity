@@ -123,8 +123,29 @@ string IRGenerationContext::newYulVariable()
 
 string IRGenerationContext::internalDispatch(YulArity const& _arity)
 {
-	string funName = "dispatch_internal_in_" + to_string(_arity.in) + "_out_" + to_string(_arity.out);
-	return m_functions.createFunction(funName, [&]() {
+	// UNIMPLEMENTED: Internal library calls via pointers are not implemented yet.
+	// We're not generating code for internal library functions here even though it's possible
+	// to call them via pointers. Right now such calls end up triggering the `default` case in
+	// the switch above.
+	set<FunctionDefinition const*> functions;
+	for (auto const& contract: mostDerivedContract().annotation().linearizedBaseContracts)
+		for (FunctionDefinition const* function: contract->definedFunctions())
+			if (
+				!function->isConstructor() &&
+				YulArity::fromType(*TypeProvider::function(*function, FunctionType::Kind::Internal)) == _arity
+			)
+			{
+				functions.insert(function);
+				enqueueFunctionForCodeGeneration(*function);
+			}
+
+	return internalDispatch(_arity, move(functions));
+}
+
+string IRGenerationContext::internalDispatch(YulArity const& _arity, set<FunctionDefinition const*> _functions)
+{
+	string funName = IRNames::internalDispatch(_arity);
+	return m_functions.createFunction(funName, [funName, _arity, functions(move(_functions))]() {
 		Whiskers templ(R"(
 			function <functionName>(fun <comma> <in>) <arrow> <out> {
 				switch fun
@@ -144,29 +165,25 @@ string IRGenerationContext::internalDispatch(YulArity const& _arity)
 		templ("assignment_op", _arity.out > 0 ? ":=" : "");
 		templ("out", suffixedVariableNameList("out_", 0, _arity.out));
 
-		// UNIMPLEMENTED: Internal library calls via pointers are not implemented yet.
-		// We're not generating code for internal library functions here even though it's possible
-		// to call them via pointers. Right now such calls end up triggering the `default` case in
-		// the switch above.
-		vector<map<string, string>> functions;
-		for (auto const& contract: mostDerivedContract().annotation().linearizedBaseContracts)
-			for (FunctionDefinition const* function: contract->definedFunctions())
-				if (
-					!function->isConstructor() &&
-					YulArity::fromType(*TypeProvider::function(*function, FunctionType::Kind::Internal)) == _arity
-				)
-				{
-					// 0 is reserved for uninitialized function pointers
-					solAssert(function->id() != 0, "Unexpected function ID: 0");
+		vector<map<string, string>> cases;
+		for (auto const* function: functions)
+		{
+			solAssert(function, "");
+			solAssert(
+				YulArity::fromType(*TypeProvider::function(*function, FunctionType::Kind::Internal)) == _arity,
+				"A single dispatch function can only handle functions of one arity"
+			);
+			solAssert(!function->isConstructor(), "");
+			// 0 is reserved for uninitialized function pointers
+			solAssert(function->id() != 0, "Unexpected function ID: 0");
 
-					functions.emplace_back(map<string, string> {
-						{ "funID", to_string(function->id()) },
-						{ "name", IRNames::function(*function)}
-					});
+			cases.emplace_back(map<string, string>{
+				{"funID", to_string(function->id())},
+				{"name", IRNames::function(*function)}
+			});
+		}
 
-					enqueueFunctionForCodeGeneration(*function);
-				}
-		templ("cases", move(functions));
+		templ("cases", move(cases));
 		return templ.render();
 	});
 }
