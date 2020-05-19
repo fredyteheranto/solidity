@@ -4,5 +4,4 @@ contract test {
     }
 }
 // ----
-// Warning: (61-70): Unused local variable.
-// Warning: (20-86): Function state mutability can be restricted to pure
+// TypeError: (73-79): Operator ** not compatible with types int_const 3 and uint256. Exponentiation needs an explicit type for the base.
