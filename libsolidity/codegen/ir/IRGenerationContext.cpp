@@ -29,6 +29,8 @@
 #include <libsolutil/Whiskers.h>
 #include <libsolutil/StringUtils.h>
 
+#include <boost/range/adaptor/map.hpp>
+
 using namespace std;
 using namespace solidity;
 using namespace solidity::util;
@@ -121,25 +123,54 @@ string IRGenerationContext::newYulVariable()
 	return "_" + to_string(++m_varCounter);
 }
 
-string IRGenerationContext::generateInternalDispatchFunction(YulArity const& _arity)
+void IRGenerationContext::initializeInternalDispatch(InternalDispatchMap _internalDispatch)
 {
-	// UNIMPLEMENTED: Internal library calls via pointers are not implemented yet.
-	// We're not generating code for internal library functions here even though it's possible
-	// to call them via pointers. Right now such calls end up triggering the `default` case in
-	// the switch above.
-	set<FunctionDefinition const*> functions;
-	for (auto const& contract: mostDerivedContract().annotation().linearizedBaseContracts)
-		for (FunctionDefinition const* function: contract->definedFunctions())
-			if (
-				!function->isConstructor() &&
-				YulArity::fromType(*TypeProvider::function(*function, FunctionType::Kind::Internal)) == _arity
-			)
-			{
-				functions.insert(function);
-				enqueueFunctionForCodeGeneration(*function);
-			}
+	solAssert(internalDispatchClean(), "");
 
-	return generateInternalDispatchFunction(_arity, move(functions));
+	for (set<FunctionDefinition const*> const& functions: _internalDispatch | boost::adaptors::map_values)
+		for (auto function: functions)
+			enqueueFunctionForCodeGeneration(*function);
+
+	m_internalDispatchMap = move(_internalDispatch);
+}
+
+InternalDispatchMap IRGenerationContext::consumeInternalDispatchMap()
+{
+	m_directInternalFunctionCalls.clear();
+
+	InternalDispatchMap internalDispatch = move(m_internalDispatchMap);
+	m_internalDispatchMap.clear();
+	return internalDispatch;
+}
+
+void IRGenerationContext::internalFunctionCalledDirectly(Expression const& _expression)
+{
+	solAssert(m_directInternalFunctionCalls.count(&_expression) == 0, "");
+
+	m_directInternalFunctionCalls.insert(&_expression);
+}
+
+void IRGenerationContext::internalFunctionAccessed(Expression const& _expression)
+{
+	solAssert(IRHelpers::referencedFunctionDeclaration(_expression), "");
+
+	if (m_directInternalFunctionCalls.count(&_expression) == 0)
+	{
+		FunctionDefinition const* function = IRHelpers::referencedFunctionDeclaration(_expression);
+		FunctionType const* functionType = TypeProvider::function(*function, FunctionType::Kind::Internal);
+		solAssert(functionType, "");
+
+		YulArity arity = YulArity::fromType(*functionType);
+
+		m_internalDispatchMap.try_emplace(arity);
+		m_internalDispatchMap[arity].insert(function);
+		enqueueFunctionForCodeGeneration(*function);
+	}
+}
+
+void IRGenerationContext::internalFunctionCalledViaPointer(YulArity const& _arity)
+{
+	m_internalDispatchMap.try_emplace(_arity);
 }
 
 string IRGenerationContext::generateInternalDispatchFunction(YulArity const& _arity, set<FunctionDefinition const*> _functions)
