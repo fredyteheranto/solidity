@@ -52,3 +52,20 @@ foreach (BOOST_COMPONENT IN LISTS BOOST_COMPONENTS)
 	get_property(LOCATION TARGET Boost::${BOOST_COMPONENT} PROPERTY IMPORTED_LOCATION)
 	message(STATUS "Found Boost::${BOOST_COMPONENT} at ${LOCATION}")
 endforeach()
+
+find_package(Z3 4.6.0)
+if (${Z3_FOUND})
+  add_definitions(-DHAVE_Z3)
+  message("Z3 SMT solver found. This enables optional SMT checking with Z3.")
+endif()
+
+find_package(CVC4 QUIET)
+if (${CVC4_FOUND})
+  add_definitions(-DHAVE_CVC4)
+  message("CVC4 SMT solver found. This enables optional SMT checking with CVC4.")
+endif()
+
+if (NOT (${Z3_FOUND} OR ${CVC4_FOUND}))
+  message("No SMT solver found (or it has been forcefully disabled). Optional SMT checking will not be available.\
+  \nPlease install Z3 or CVC4 or remove the option disabling them (USE_Z3, USE_CVC4).")
+endif()
